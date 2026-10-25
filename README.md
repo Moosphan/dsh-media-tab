@@ -133,6 +133,8 @@ cordis.patch.yml  bundle patch
 
 设计约束：宿主与客户端都不 import 任何 `@deepseek-ai/*` 运行时模块，避免 profile 解析问题；工具对象按 `dsh-tools` 的线上形状手写。
 
+改包名时要同步四处：`package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`lib/client.js` 里的 `__ModuleLoader__.load({ id })`、`lib/index.js` 的 `export const name`。
+
 ## License
 
 MIT
