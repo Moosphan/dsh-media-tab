@@ -1,7 +1,5 @@
 # dsh-media-tab
 
-[![test](https://github.com/USER/dsh-media-tab/actions/workflows/test.yml/badge.svg)](https://github.com/USER/dsh-media-tab/actions/workflows/test.yml)
-
 在 DeepSeek Harness（DSH）里直接播放本地视频和音频：**回复下方内联播放**，点开文件卡片则进入**右侧栏独立播放页**，旁边带一个最小的「最近播放」列表。
 
 - 零运行时依赖，零 ffmpeg：装完即用
@@ -100,6 +98,17 @@ $DSH_HOME/cache/dsh-media-tab/secret        媒体签名密钥
 ```
 
 删掉这两个文件即可回到初始状态。
+
+## 手动验收
+
+发布前在真实 DSH 里过一遍：
+
+1. `link:` 安装并重启，插件页出现「媒体播放」
+2. 让模型 `present` 一个 mp4 → 回复下方出现播放器，拖动进度条正常
+3. 点交付卡片 → 右侧栏出现播放页
+4. 播放后看播放页底部「最近播放」→ 该文件出现，点击可切换
+5. 播放一个 `.avi` → 错误卡片给出 `ffmpeg` 命令
+6. DevTools → Network：媒体请求应是 `206 Partial Content`
 
 ## 已知限制
 
