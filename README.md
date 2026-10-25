@@ -2,96 +2,147 @@
 
 [![test](https://github.com/Moosphan/dsh-media-tab/actions/workflows/test.yml/badge.svg)](https://github.com/Moosphan/dsh-media-tab/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![DSH](https://img.shields.io/badge/DSH-0.2.x-4D6BFE)
+[![DSH](https://img.shields.io/badge/DSH-0.2.x-4D6BFE)](#要求)
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](CHANGELOG.md)
 
-> 在 DeepSeek Harness 的对话里直接播放本地视频和音频：**回复下方内联播放器**、**右侧栏独立播放页**、**最近播放列表**。
-> 零运行时依赖，零 ffmpeg，装完即用。
+**在 DeepSeek Harness 里直接播放本地视频和音频。**
+回复下方内联播放器 · 右侧栏独立播放页 · 最近播放列表 · 零运行时依赖 · 零 ffmpeg
+
+[简体中文](README.md) | [English](README.en.md)
 
 ![内联播放器](docs/inline-player.webp)
 
----
+*回复下方的内联播放器：宽度撑满、原生控件、支持拖动 / 全屏 / 画中画。*
 
-## 它解决什么
+## 目录
 
-DSH 0.2.1-rc.3 的消息渲染块只有 `text / image / file / table`，客户端 bundle 里没有任何 `<video>` / `<audio>`；右侧栏文档预览只注册了 Markdown、代码、图片、PDF、Office、HTML 和纯文本。所以 agent 用 `present` 交付一个 mp4 时：
+- [为什么](#为什么)
+- [特性](#特性)
+- [要求](#要求)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [用法](#用法)
+- [支持的格式](#支持的格式)
+- [工作方式](#工作方式)
+- [安全与隐私](#安全与隐私)
+- [数据与配置](#数据与配置)
+- [排错](#排错)
+- [FAQ](#faq)
+- [开发](#开发)
+- [路线图](#路线图)
+- [贡献](#贡献)
+- [致谢](#致谢)
+- [License](#license)
 
-- 交付卡片点开 → 右侧栏判定「不可预览」
-- 卡片上的打开按钮 → 系统默认播放器（QuickTime / IINA / VLC）
+## 为什么
 
-`dsh-media-tab` 补上三件事，别的都不做：
+DSH 0.2.1-rc.3 的消息渲染块只有 `text / image / file / table`，客户端 bundle 里没有任何 `<video>` / `<audio>`；右侧栏文档预览只注册了 Markdown、代码、图片、PDF、Office、HTML 和纯文本。于是 agent 用 `present` 交付一个 mp4 时：
 
-1. **内联播放**：本轮 `present` 过的音视频直接出现在回复下方，不需要模型额外调用
-2. **独立 tab 播放**：点交付卡片或文件链接，右侧栏变成播放器，支持拖动、全屏、画中画
-3. **最近播放**：播放页底部列出最近 20 条，点一条即切换，可清空
+- 点交付卡片 → 右侧栏显示「不可预览」
+- 点卡片上的打开按钮 → 跳到系统默认播放器（QuickTime / IINA / VLC）
 
-它**不是**媒体库：没有收藏、搜索、标签、播放列表、转码、HLS、远程 URL。范围小是刻意的。
+`dsh-media-tab` 只补三件事：
+
+1. **内联播放**：本轮 `present` 的音视频自动出现在回复下方，模型不需要额外调用
+2. **独立播放页**：点交付卡片或文件链接，右侧栏变成播放器
+3. **最近播放**：播放页底部列出最近 20 条，点一条即切换
+
+它**不是**媒体库，也不是转码器。没有收藏、搜索、标签、播放列表、HLS、远程 URL。范围小是刻意的。
 
 ## 特性
 
-- **两种位置，一个组件**：`conversation.chat.turnTail` 与 `sidebar.right.tab.document` 复用同一个 `MediaPlayer`
-- **原生控件**：播放/暂停、拖动、音量、倍速、全屏、画中画都由浏览器提供，不重造轮子
-- **HTTP Range 流式**：206 / 416 / HEAD 完整实现，60 MB 成片拖进度不整读进内存
-- **桌面端也能 seek**：桌面页面跑在 `dsh-app://`，媒体改走签名绝对地址直连主机端口，绕开外壳转发器丢 `Content-Length` 的问题（见[工作方式](#工作方式)）
-- **单实例出声**：新的播放会暂停其它播放器
-- **错误分级**：文件不存在、无权限、编码不支持、路由未就绪分别给出不同文案；不支持的容器直接给可复制的 `ffmpeg` 命令
-- **零依赖**：不 import 任何 `@deepseek-ai/*` 运行时模块，不打包二进制
-- **安全默认**：扩展名白名单、`realpath` 防符号链接、Host/Origin/`Sec-Fetch-Site` 围栏、HMAC 签名、`0600` 密钥
+| 能力 | 说明 |
+|---|---|
+| **内联播放** | `present` 交付的音视频直接渲染在回复下方；超过 3 个折叠 |
+| **独立播放页** | 接管 `documentPreviews`，媒体文件不再落入「不可预览」 |
+| **最近播放** | 20 条、按播放时间倒序、失效文件标灰、可清空；桌面端与 Web 端共享 |
+| **原生控件** | 播放、拖动、音量、倍速、全屏、画中画由浏览器提供，不重造轮子 |
+| **HTTP Range** | 200 / 206 / 416 / HEAD 完整实现，大文件不整读进内存 |
+| **桌面端可 seek** | 签名绝对地址直连主机端口，绕开 `dsh-app://` 转发丢 `Content-Length` 的问题 |
+| **单实例** | 新的播放会暂停其它播放器，不会两个声音叠在一起 |
+| **错误分级** | 文件不存在、无权限、编码不支持、路由未就绪分别给出不同文案 |
+| **零依赖** | 不 import 任何 `@deepseek-ai/*` 运行时模块，不打包二进制 |
+| **安全默认** | 扩展名白名单、`realpath`、Host/Origin 围栏、HMAC 签名、`0600` 密钥 |
+
+## 要求
+
+- DSH `>=0.2.0-rc.1 <0.4.0-0`（已在 **0.2.1-rc.3 桌面端**实测内联、侧栏、音频与最近播放）
+- 桌面端或 Web 端均可
+- **不需要 ffmpeg**，也不需要额外的 Node 运行时
+- 仅开发/测试需要 Node 22+
 
 ## 安装
 
-**从 GitHub 安装**（当前推荐）：
+### 从 GitHub 安装
 
 ```sh
 dsh plugin add github:Moosphan/dsh-media-tab
 ```
 
-**从 npm 安装**（发布后）：
+### 从 npm 安装（发布后）
 
 ```sh
 dsh plugin add dsh-media-tab
 ```
 
-**本地开发**：
+### 本地开发
 
 ```sh
 dsh plugin --profile desktop add link:/absolute/path/to/dsh-media-tab
 ```
 
-装完**重启 DSH**（宿主路由在启动时注册）。之后客户端改动刷新页面即可，宿主改动仍需重启。
+装完**重启 DSH**：宿主路由在启动时注册。之后客户端改动刷新页面即可，宿主改动仍需重启。
 
-兼容性：`engines.dsh` 为 `>=0.2.0-rc.1 <0.4.0-0`；已在 **DSH 0.2.1-rc.3 桌面端**实测内联播放、侧栏播放、音频与最近播放。
+### 验证安装
+
+```sh
+curl -s http://127.0.0.1:<port>/dsh-media-tab/api/health
+# {"ok":true,"name":"dsh-media-tab","version":"0.1.0"}
+```
+
+插件页（侧栏 → 插件）应出现「媒体播放」卡片。
+
+## 快速开始
+
+1. 让模型交付一个本地视频：
+
+   ```text
+   present({ files: [{ path: "/Users/me/Movies/demo.mp4" }] })
+   ```
+
+2. 播放器出现在回复下方，可直接播放、拖动。
+3. 点「在侧栏打开」或交付卡片 → 右侧栏播放页。
+4. 播放页底部出现「最近播放」，点条目即切换。
+
+也可以直接说「播一下 /path/a.mp4」，模型会调用 `play_media`。
 
 ## 用法
 
-### 让 agent 交付
+### present（推荐）
 
-模型用自带的 `present` 工具交付音视频时，内联播放器自动出现，不需要调用本插件的工具：
+模型用自带的 `present` 工具交付音视频，播放器自动出现，同时写入官方 `deliverables/presented` 事件，交付卡片和侧栏都能打开同一个文件。
 
-```text
-present({ files: [{ path: "/Users/me/Movies/demo.mp4" }] })
-```
-
-用户说「播一下 /path/a.mp4」时，模型调用 `play_media`：
+### play_media
 
 | 参数 | 必填 | 说明 |
 |---|---|---|
-| `path` | 是 | 本地文件路径，支持 `~` 与会话工作目录下的相对路径 |
+| `path` | 是 | 本地路径，支持 `~` 与会话工作目录下的相对路径 |
 | `title` | 否 | 播放器标题，默认文件名 |
 | `autoplay` | 否 | 自动播放（浏览器通常会拦） |
-| `loop` | 否 | 循环 |
+| `loop` | 否 | 循环播放 |
 
-调用后播放器出现在回复下方，同时写入官方 `deliverables/presented` 事件，交付卡片和侧栏都能打开同一个文件。
+返回结果里带一个签名绝对 URL，可直接在浏览器打开。
 
-### 打开独立播放页
+### 独立播放页
 
-- 点交付卡片 → 右侧栏预览被本插件接管为播放器
-- 或点内联播放器右上角的「在侧栏打开」
+- 点交付卡片 → 右侧栏播放页
+- 或点内联播放器右上角「在侧栏打开」
+- 播放页底部固定「最近播放」，点击条目在当前页内切换
 
-### 最近播放
+### 关闭 / 移除
 
-播放页底部固定显示「最近播放」：最多 20 条、按播放时间倒序、失效文件标灰、右上角可清空。点击条目在当前播放页内切换。
-
-记录存在 `$DSH_HOME/cache/dsh-media-tab/recent.json`（默认 `~/.dsh/cache/dsh-media-tab/recent.json`，权限 `0600`），桌面端与 Web 端共享。
+- 播放器：点暂停即可，关闭标签页会停止播放
+- 插件：侧栏 → 插件 → 已安装插件 → 卸载，然后重启 DSH
 
 ## 支持的格式
 
@@ -101,7 +152,7 @@ present({ files: [{ path: "/Users/me/Movies/demo.mp4" }] })
 |---|---|
 | 视频 | `.mp4` `.m4v` `.mov` `.webm` `.ogv` `.mkv` `.3gp` |
 | 音频 | `.mp3` `.wav` `.ogg` `.oga` `.m4a` `.aac` `.flac` `.opus` `.weba` |
-| 看编码 | `.mkv`、`.3gp`、HEVC 的 `.mov`：取决于文件编码与操作系统（macOS / Windows 有平台解码器，Linux 可能没有） |
+| 取决于编码 | `.mkv`、`.3gp`、HEVC 的 `.mov`：与文件编码和操作系统有关（macOS / Windows 有平台解码器，Linux 可能没有） |
 | 不支持 | `.avi` `.flv` `.wmv` `.wma` `.ts` `.mpg` `.mpeg` `.rm` `.rmvb` `.amr` `.ape` `.ac3` `.dts` `.mid` |
 
 不支持的容器不会给黑框，而是给出可复制的命令：
@@ -159,7 +210,7 @@ present / play_media
 | `GET/POST /dsh-media-tab/api/recent` | 登录 cookie + 围栏 | 读取 / 记录最近播放 |
 | `POST /dsh-media-tab/api/recent/clear` | 登录 cookie + 围栏 | 清空 |
 
-## 安全
+## 安全与隐私
 
 DSH 的本地 Web 服务本身不带鉴权，所以本插件自己把门：
 
@@ -171,6 +222,8 @@ DSH 的本地 Web 服务本身不带鉴权，所以本插件自己把门：
 - **媒体响应显式跨源**：`Access-Control-Allow-Origin: *` 与 `Cross-Origin-Resource-Policy: cross-origin` 只为让 `dsh-app://` 页面加载签名地址；没有签名拿不到任何字节
 - **Range 流式**：`fs.createReadStream` 按请求区间读盘，不整文件进内存；读盘错误只断当前响应，不影响宿主
 - **不联网、不上报、不扫描目录**
+
+安全问题请走私密渠道，见 [SECURITY.md](SECURITY.md)。
 
 ## 数据与配置
 
@@ -199,19 +252,39 @@ DSH 的本地 Web 服务本身不带鉴权，所以本插件自己把门：
 }
 ```
 
-删掉这两个文件即可回到初始状态。原子写入（临时文件 + rename），损坏的 JSON 会改名留档而不是反复报错。
+原子写入（临时文件 + rename）；损坏的 JSON 会改名留档，而不是反复报错。删掉这两个文件即可回到初始状态。
 
 ## 排错
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | 进度条拖不动 / 暂停拖拽不换帧 | 宿主还是旧代码，或客户端仍在用相对地址 | 完全退出 DSH 再打开；Network 里媒体请求应是 `http://127.0.0.1:<port>/dsh-media-tab/media` |
-| 播放器显示「连不上播放服务」 | 宿主路由未挂载 / 插件未加载 | 重启 DSH；`curl http://127.0.0.1:<port>/dsh-media-tab/api/health` 应返回 `{"ok":true}` |
+| 播放器显示「连不上播放服务」 | 宿主路由未挂载 / 插件未加载 | 重启 DSH；`curl` 一下 `/api/health` 应返回 `{"ok":true}` |
 | 「文件不在了」 | 文件被移动或删除 | 重新交付新路径 |
 | 「没有权限读取这个文件」 | macOS TCC / 文件权限 | 给 DSH 相应目录权限，或换可读路径 |
 | 「解码失败」 | 编码不在 Chromium 支持范围 | 用上面的 `ffmpeg` 命令转码 |
 | 插件页没有「媒体播放」 | bundle 未选中 / 安装后未重启 | 插件页启用后 Cmd+Q 重开 |
-| 视频很矮、上下留黑边 | 源文件是竖屏或非 16:9 | 正常行为，`object-fit: contain` 保证不裁切 |
+| 视频上下留黑边 | 源文件是竖屏或非 16:9 | 正常行为，`object-fit: contain` 保证不裁切 |
+
+## FAQ
+
+**为什么拖进度条没有反应？**
+桌面端旧版本把媒体地址解析成 `dsh-app://`，外壳转发时丢掉了 `Content-Length`，Chromium 无法 seek。0.1.0 起改为 `/api/sign` + 绝对地址直连；确认宿主已重启、Network 里的请求是 `http://127.0.0.1...`。
+
+**为什么视频两边/上下有黑边？**
+播放器用 `object-fit: contain` 保持原始比例，不会裁切画面。内联模式宽度撑满、高度按比例；竖屏视频会在 `85vh` 处封顶。
+
+**支持字幕吗？**
+暂不支持。路线图里有 VTT / SRT。
+
+**会上传我的文件吗？**
+不会。插件不发起任何外部网络请求，媒体只从本机宿主路由读取。
+
+**能关掉最近播放吗？**
+当前不能单独关闭；可以一键清空，或让文件保持不播放。记录只存在本机。
+
+**和 `present` 是什么关系？**
+`present` 负责“交付文件”，本插件负责“播放”。`play_media` 只是换了一条更方便的入口，最终仍写入同一个 `deliverables/presented` 事件。
 
 ## 开发
 
@@ -248,15 +321,6 @@ npm pack --dry-run
 6. 暂停后拖动 → 画面跟着换帧
 7. DevTools → Network：媒体请求为 `206 Partial Content`，地址是 `http://127.0.0.1:<port>/dsh-media-tab/media...`
 
-## 已知限制
-
-- 不转码、不解析播放列表、不支持 HLS（`.m3u8`）与远程 URL
-- 不支持字幕轨、音频封面、波形
-- 最近播放固定 20 条；不做收藏、搜索、标签
-- 最近列表里的条目在当前播放页内切换，不新开标签
-- 宿主代码更新后必须重启 DSH；客户端改动刷新页面即可
-- 一次只让一个播放器出声
-
 ## 路线图
 
 - [ ] 字幕轨（VTT 原生 / SRT 转换）
@@ -266,7 +330,14 @@ npm pack --dry-run
 - [ ] 独立的「最近播放」侧栏入口
 - [ ] 播放列表 / HLS
 
-## 参考与致谢
+## 贡献
+
+- 报 bug 请附：DSH 版本、插件版本、操作系统、复现步骤、Console 里 `[dsh-media-tab]` 开头的日志
+- PR 请保持零运行时依赖，并跑 `npm test`
+- 安全漏洞请走私密报告，见 [SECURITY.md](SECURITY.md)
+- 新格式/新行为请先开 issue 讨论范围，避免 PR 做到一半被砍
+
+## 致谢
 
 - DSH 插件 API 与 `present` 交付通道：DeepSeek Harness 官方文档与 `@deepseek-ai/dsh-*` 包
 - 同类项目的先行探索：[`@orderg-x/dsh-video-preview`](https://github.com/OrderG-X/dsh-video-preview)、[`dsh-media-inline-preview`](https://github.com/seeingrain/dsh-media-inline-preview)、[`dsh-preview-media`](https://www.npmjs.com/package/dsh-preview-media)
@@ -275,17 +346,3 @@ npm pack --dry-run
 ## License
 
 [MIT](LICENSE)
-
----
-
-## English
-
-A DeepSeek Harness plugin that plays local video and audio **inline under the reply** and in a **dedicated right-sidebar tab**, with a minimal recently-played list.
-
-- Zero runtime dependencies and no ffmpeg: unsupported containers return a copyable convert command
-- Native `<video>` / `<audio>` controls, HTTP Range streaming with 206/416/HEAD
-- Desktop-safe seeking: signed absolute media URLs bypass the `dsh-app://` forwarder that strips `Content-Length`
-- Security: extension whitelist, `realpath` symlink check, Host/Origin/`Sec-Fetch-Site` fence, login-cookie gate for APIs, HMAC-signed media URLs, `0600` secret
-- Install: `dsh plugin add github:Moosphan/dsh-media-tab`, then restart DSH
-- Formats: mp4/m4v/mov/webm/ogv/mkv/3gp and mp3/wav/ogg/oga/m4a/aac/flac/opus/weba
-- Tests: 39 cases covering Range, auth, fencing, signing, the recent store, the manifest, and a client smoke render

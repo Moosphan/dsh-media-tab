@@ -32,7 +32,8 @@
     "LICENSE",
     "docs",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "README.en.md"
   ],
   "scripts": {
     "test": "node --test"
