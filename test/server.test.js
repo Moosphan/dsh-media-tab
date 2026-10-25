@@ -148,15 +148,17 @@ test('out-of-range requests return 416', async () => {
 test('signed media route requires a matching token', async () => {
   const media = tempMedia('signed-bytes')
   await withServer({}, async ({ base }) => {
-    const token = signToken(SECRET, media.real)
-    const ok = await fetch(`${base}${ROUTE_BASE}/media?t=${token}&p=${encodeURIComponent(media.real)}`)
+    const signed = await (await fetch(`${base}${ROUTE_BASE}/api/sign?p=${encodeURIComponent(media.real)}`)).json()
+    const ok = await fetch(signed.url)
     assert.equal(ok.status, 200)
     assert.equal(await ok.text(), 'signed-bytes')
 
-    const bad = await fetch(`${base}${ROUTE_BASE}/media?t=deadbeef&p=${encodeURIComponent(media.real)}`)
+    const bad = await fetch(signed.url.replace(/t=[0-9a-f]+/, 't=deadbeef'))
     assert.equal(bad.status, 403)
 
-    const missing = await fetch(`${base}${ROUTE_BASE}/media?p=${encodeURIComponent(media.real)}`)
+    const unsigned = new URL(signed.url)
+    unsigned.searchParams.delete('t')
+    const missing = await fetch(unsigned.toString())
     assert.equal(missing.status, 403)
   })
 })
@@ -188,9 +190,9 @@ test('sign API still requires the connection fence', async () => {
 
 test('signed media bypasses the shell fence but not the token', async () => {
   const media = tempMedia('desktop-media')
-  await withServer({}, async ({ port }) => {
-    const token = signToken(SECRET, media.real)
-    const target = `${ROUTE_BASE}/media?t=${token}&p=${encodeURIComponent(media.real)}`
+  await withServer({}, async ({ port, base }) => {
+    const signed = await (await fetch(`${base}${ROUTE_BASE}/api/sign?p=${encodeURIComponent(media.real)}`)).json()
+    const target = new URL(signed.url).pathname + new URL(signed.url).search
     // The desktop shell reaches the host from dsh-app://, so these headers
     // look cross-site even though the request is trusted by the token.
     const allowed = await rawRequest(port, target, {
@@ -200,7 +202,7 @@ test('signed media bypasses the shell fence but not the token', async () => {
     assert.equal(allowed.status, 200)
     assert.equal(allowed.body, 'desktop-media')
 
-    const denied = await rawRequest(port, `${ROUTE_BASE}/media?t=bad&p=${encodeURIComponent(media.real)}`, {
+    const denied = await rawRequest(port, target.replace(/t=[0-9a-f]+/, 't=bad'), {
       'sec-fetch-site': 'cross-site',
     })
     assert.equal(denied.status, 403)

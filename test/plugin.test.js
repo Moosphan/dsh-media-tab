@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import vm from 'node:vm'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -61,7 +61,7 @@ test('host plugin mounts a route and the play_media tool', async () => {
 
   assert.equal(value.kind, 'video')
   assert.equal(value.name, 'clip.mp4')
-  assert.equal(value.path, file)
+  assert.equal(fs.realpathSync.native(value.path), fs.realpathSync.native(file))
   assert.match(value.url, /^http:\/\/127\.0\.0\.1:55580\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=/)
   assert.match(value.text, /clip\.mp4/)
 
@@ -91,7 +91,7 @@ test('play_media resolves relative paths against the session cwd', async () => {
     { agent: { session: { header: { cwd: dir } } } },
   )
   assert.equal(value.kind, 'video')
-  assert.equal(path.dirname(value.path), fs.realpathSync(dir))
+  assert.equal(fs.realpathSync.native(path.dirname(value.path)), fs.realpathSync.native(dir))
 })
 
 test('play_media explains unsupported containers instead of pretending', async () => {
