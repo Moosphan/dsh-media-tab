@@ -70,7 +70,8 @@ test('host plugin mounts a route and the play_media tool', async () => {
   assert.equal(appended[0].event, 'deliverables/presented')
   assert.equal(appended[0].payload.turn, 4)
   assert.equal(appended[0].payload.callId, 'call-1')
-  assert.equal(appended[0].payload.files[0].path, file)
+  assert.equal(path.basename(appended[0].payload.files[0].path), 'clip.mp4')
+  assert.ok(fs.existsSync(appended[0].payload.files[0].path))
   assert.equal(appended[0].payload.files[0].title, 'Demo')
 })
 
