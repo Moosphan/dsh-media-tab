@@ -161,6 +161,52 @@ test('signed media route requires a matching token', async () => {
   })
 })
 
+test('sign API returns an absolute, working media URL', async () => {
+  const media = tempMedia('signed-now')
+  await withServer({}, async ({ base }) => {
+    const response = await fetch(`${base}${ROUTE_BASE}/api/sign?p=${encodeURIComponent(media.real)}`)
+    assert.equal(response.status, 200)
+    const body = await response.json()
+    assert.equal(body.ok, true)
+    assert.equal(body.kind, 'video')
+    assert.match(body.url, /^http:\/\/127\.0\.0\.1:\d+\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=/)
+
+    const part = await fetch(body.url, { headers: { Range: 'bytes=0-5' } })
+    assert.equal(part.status, 206)
+    assert.equal(await part.text(), 'signed')
+  })
+})
+
+test('sign API still requires the connection fence', async () => {
+  const media = tempMedia('nope')
+  await withServer({}, async ({ port }) => {
+    const target = `${ROUTE_BASE}/api/sign?p=${encodeURIComponent(media.real)}`
+    const crossSite = await rawRequest(port, target, { 'sec-fetch-site': 'cross-site' })
+    assert.equal(crossSite.status, 403)
+  })
+})
+
+test('signed media bypasses the shell fence but not the token', async () => {
+  const media = tempMedia('desktop-media')
+  await withServer({}, async ({ port }) => {
+    const token = signToken(SECRET, media.real)
+    const target = `${ROUTE_BASE}/media?t=${token}&p=${encodeURIComponent(media.real)}`
+    // The desktop shell reaches the host from dsh-app://, so these headers
+    // look cross-site even though the request is trusted by the token.
+    const allowed = await rawRequest(port, target, {
+      'sec-fetch-site': 'cross-site',
+      origin: 'dsh-app://app',
+    })
+    assert.equal(allowed.status, 200)
+    assert.equal(allowed.body, 'desktop-media')
+
+    const denied = await rawRequest(port, `${ROUTE_BASE}/media?t=bad&p=${encodeURIComponent(media.real)}`, {
+      'sec-fetch-site': 'cross-site',
+    })
+    assert.equal(denied.status, 403)
+  })
+})
+
 test('non-media extensions are refused even with a valid token', async () => {
   const file = tempMedia('secret', 'notes.txt')
   await withServer({}, async ({ base }) => {

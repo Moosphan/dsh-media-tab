@@ -80,7 +80,9 @@ DSH 的本地 Web 服务本身不带鉴权，所以本插件的路由自己把�
 - **防 DNS 重绑定 / 跨站**：Host 必须是回环或 DSH 自己的地址，`Sec-Fetch-Site: cross-site` 拒绝，`Origin` 必须与 Host 一致
 - **两条路由**：
   - `/dsh-media-tab/preview` 交给 DSH 的 `connection` 服务验登录 cookie（拿不到该服务的旧版本只收本机连接）
-  - `/dsh-media-tab/media` 额外要求 HMAC 签名，签名密钥存在 `~/.dsh/cache/dsh-media-tab/secret`（`0600`）
+  - `/dsh-media-tab/media` 只认 HMAC 签名，签名密钥存在 `~/.dsh/cache/dsh-media-tab/secret`（`0600`）
+
+> 为什么 `/media` 不查 cookie：桌面端页面跑在 `dsh-app://` 下，媒体请求由 shell 转发到 HTTP，转发器会丢掉 `Content-Length`，Chromium 因此把响应当成不可 seek 的流。播放器改为向 `/api/sign` 换一个**绝对主机地址**的签名 URL，直接连 `http://127.0.0.1:<port>`，绕开转发器；这条路由的授权就是签名本身。
 - **Range 流式**：只读请求的字节区间，不整文件读入内存
 - 不联网、不上报、不扫描目录
 
@@ -108,10 +110,12 @@ $DSH_HOME/cache/dsh-media-tab/secret        媒体签名密钥
 3. 点交付卡片 → 右侧栏出现播放页
 4. 播放后看播放页底部「最近播放」→ 该文件出现，点击可切换
 5. 播放一个 `.avi` → 错误卡片给出 `ffmpeg` 命令
-6. DevTools → Network：媒体请求应是 `206 Partial Content`
+6. 拖动进度条：画面应实时跟随，暂停时拖动也应换帧
+7. DevTools → Network：媒体请求应是 `206 Partial Content`，且请求地址是 `http://127.0.0.1:<port>/dsh-media-tab/media...`
 
 ## 已知限制
 
+- 宿主代码更新后需要**重启 DSH**；客户端改动刷新页面即可
 - 不转码、不解析播放列表、不支持 HLS（`.m3u8`）和远程 URL
 - 最近播放列表里的条目在当前播放页内切换，不会新开标签页
 - 内联播放器固定高度（视频 240px），不做悬浮/画中画以外的自定义布局
