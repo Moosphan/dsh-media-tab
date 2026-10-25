@@ -1,0 +1,7 @@
+# dsh-media-tab bundle patch.
+#
+# `name` must match the installed package name exactly; otherwise the plugin
+# installs but never mounts.
+- insert:
+    - id: dsh-media-tab
+      name: dsh-media-tab

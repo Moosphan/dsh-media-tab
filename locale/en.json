@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Media Player",
+    "description": "Plays local video and audio under the reply and in the right sidebar, with a minimal recent list. No ffmpeg required."
+  }
+}

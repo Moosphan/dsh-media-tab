@@ -1,0 +1,49 @@
+{
+  "name": "dsh-media-tab",
+  "version": "0.1.0",
+  "description": "Inline and tabbed video/audio playback for DeepSeek Harness: a player under the reply, a full player in the right sidebar, and a minimal recent list. No ffmpeg required.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "video",
+    "audio",
+    "player",
+    "media",
+    "inline"
+  ],
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon.svg": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.0-rc.1 <0.4.0-0"
+  },
+  "license": "MIT"
+}
