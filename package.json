@@ -29,7 +29,10 @@
     "icon.svg",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs",
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "scripts": {
     "test": "node --test"
@@ -47,5 +50,17 @@
     "dsh": ">=0.2.0-rc.1 <0.4.0-0"
   },
   "license": "MIT",
-  "icon": "./icon.svg"
+  "icon": "./icon.svg",
+  "author": "Moosphan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moosphan/dsh-media-tab.git"
+  },
+  "homepage": "https://github.com/Moosphan/dsh-media-tab#readme",
+  "bugs": {
+    "url": "https://github.com/Moosphan/dsh-media-tab/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
