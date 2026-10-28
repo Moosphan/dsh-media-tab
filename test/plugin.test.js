@@ -63,7 +63,7 @@ test('host plugin mounts a route and the play_media tool', async () => {
   assert.equal(value.name, 'clip.mp4')
   assert.equal(path.basename(value.path), 'clip.mp4')
   assert.ok(fs.existsSync(value.path))
-  assert.match(value.url, /^http:\/\/127\.0\.0\.1:55580\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=/)
+  assert.match(value.url, /^http:\/\/127\.0\.0\.1:55580\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=.*&v=\d+/)
   assert.match(value.text, /clip\.mp4/)
 
   assert.equal(appended.length, 1)

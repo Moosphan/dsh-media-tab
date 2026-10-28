@@ -82,7 +82,8 @@ test('parseRange handles the common forms', () => {
   assert.equal(parseRange('bytes=0-9', 100).end, 9)
   assert.deepEqual(parseRange('bytes=90-', 100), { start: 90, end: 99 })
   assert.deepEqual(parseRange('bytes=-10', 100), { start: 90, end: 99 })
-  assert.equal(parseRange('bytes=100-', 100), 'unsatisfiable')
+  assert.deepEqual(parseRange('bytes=100-', 100), { start: 99, end: 99 })
+  assert.equal(parseRange('bytes=101-', 100), 'unsatisfiable')
   assert.equal(parseRange('bytes=5-1', 100), null)
   assert.equal(parseRange('bytes=0-1,3-4', 100), null)
 })
@@ -171,7 +172,7 @@ test('sign API returns an absolute, working media URL', async () => {
     const body = await response.json()
     assert.equal(body.ok, true)
     assert.equal(body.kind, 'video')
-    assert.match(body.url, /^http:\/\/127\.0\.0\.1:\d+\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=/)
+    assert.match(body.url, /^http:\/\/127\.0\.0\.1:\d+\/dsh-media-tab\/media\?t=[0-9a-f]{32}&p=.*&v=\d+/)
 
     const part = await fetch(body.url, { headers: { Range: 'bytes=0-5' } })
     assert.equal(part.status, 206)
